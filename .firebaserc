@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "dev": "foodfinderapp-b2c0d",
+    "default": "foodfinderapp-b2c0d"
+  },
+  "targets": {},
+  "etags": {}
+}
