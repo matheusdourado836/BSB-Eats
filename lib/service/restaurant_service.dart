@@ -9,7 +9,6 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../shared/model/avaliacao.dart';
 import 'dio_client.dart';
 import 'package:path/path.dart' as path;

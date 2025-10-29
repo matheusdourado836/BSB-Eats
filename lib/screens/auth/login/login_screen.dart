@@ -63,6 +63,8 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
       showCustomSnackBar(child: Text(e.translated()));
+    }catch(e) {
+      showCustomSnackBar(child: Text('Ocorreu um erro inesperado. Tente novamente mais tarde.'));
     }finally {
       setState(() => _loading = false);
     }

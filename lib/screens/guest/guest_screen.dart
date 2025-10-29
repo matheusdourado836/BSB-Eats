@@ -1,7 +1,6 @@
 import 'package:bsb_eats/screens/guest/tabs/guest_feed_tab.dart';
 import 'package:bsb_eats/screens/guest/tabs/guest_home_tab.dart';
 import 'package:flutter/material.dart';
-import 'package:bsb_eats/screens/home/tabs/profile_tab.dart';
 
 class GuestScreen extends StatefulWidget {
   const GuestScreen({super.key});

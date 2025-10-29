@@ -23,29 +23,33 @@ class AuthService {
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   Future<MyUser?> getLoggedUser() async {
-    try {
-      MyUser? user;
-      if(_auth.currentUser == null) {
-        return null;
+    MyUser? user;
+    if(_auth.currentUser == null) {
+      return null;
+    }
+    await _database.collection("users").doc(_auth.currentUser?.uid ?? "").get().then((DocumentSnapshot doc) async {
+      if(doc.exists) {
+        final dbUser = doc.data() as Map<String, dynamic>;
+        user = MyUser.fromJson(dbUser);
+        user?.emailVerified = _auth.currentUser?.emailVerified;
+        if(user?.emailVerified != true) return;
+        final token = await _setUserToken();
+        user?.fcmToken = token;
+        user?.likes ??= [];
+        final likesSnapshot = await _database.collection('users').doc(user?.id).collection('likes').get();
+        user?.likes = likesSnapshot.docs.map((doc) => Like.fromJson(doc.data())).toList();
       }
-      await _database.collection("users").doc(_auth.currentUser?.uid ?? "").get().then((DocumentSnapshot doc) async {
-        if(doc.exists) {
-          final dbUser = doc.data() as Map<String, dynamic>;
-          user = MyUser.fromJson(dbUser);
-          user?.emailVerified = _auth.currentUser?.emailVerified;
-          if(user?.emailVerified == false) return;
-          final token = await _messaging.getToken();
-          await _userService.updateUserData({"fcmToken": token});
-          user?.fcmToken = token;
-          user?.likes ??= [];
-          final likesSnapshot = await _database.collection('users').doc(user?.id).collection('likes').get();
-          user?.likes = likesSnapshot.docs.map((doc) => Like.fromJson(doc.data())).toList();
-        }
-      });
+    });
 
-      return user;
-    }catch(e, _) {
-      print(e.toString());
+    return user;
+  }
+
+  Future<String?> _setUserToken() async {
+    try{
+      final token = await _messaging.getToken();
+      await _userService.updateUserData({"fcmToken": token});
+      return token;
+    }catch(_) {
       return null;
     }
   }

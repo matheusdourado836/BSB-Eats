@@ -1,8 +1,6 @@
 import 'dart:io';
-
 import 'package:bsb_eats/shared/model/post.dart';
 import 'package:bsb_eats/shared/util/extensions.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
@@ -35,8 +33,8 @@ class _EditPostScreenState extends State<EditPostScreen> {
   List<bool> _atmosphere = [true, false, false, false, false];
   List<bool> _food = [true, false, false, false, false];
   List<bool> _service = [true, false, false, false, false];
-  List<String> _imagesToDelete = [];
-  List<String> _imagesToAdd = [];
+  final List<String> _imagesToDelete = [];
+  final List<String> _imagesToAdd = [];
   List<String?> images = [];
   bool _loading = false;
 

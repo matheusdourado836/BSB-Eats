@@ -1,10 +1,8 @@
-import 'package:bsb_eats/controller/user_controller.dart';
 import 'package:bsb_eats/screens/home/tabs/feed_tab.dart';
 import 'package:bsb_eats/screens/home/tabs/home_tab.dart';
 import 'package:bsb_eats/screens/home/tabs/profile_tab.dart';
 import 'package:event_bus/event_bus.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -33,13 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
-        onTap: (index) {
-          setState(() => currentIndex = index);
-          if(currentIndex == 2) {
-            final userController = Provider.of<UserController>(context, listen: false);
-            //userController.fetchUserPosts(userController.currentUser!.id!);
-          }
-        },
+        onTap: (index) => setState(() => currentIndex = index),
         items: [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
