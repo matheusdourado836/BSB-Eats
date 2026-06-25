@@ -54,12 +54,11 @@ class ProfilePictureSelected extends StatelessWidget {
                         }
                       },
                       style: TextButton.styleFrom(
-                        foregroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
                         textStyle: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                             decoration: TextDecoration.underline,
-                            decorationColor: Colors.blue
                         )
                       ),
                       child: const Text('Ver perfil')

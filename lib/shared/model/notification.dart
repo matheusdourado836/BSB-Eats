@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:bsb_eats/shared/model/enums.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -9,9 +11,10 @@ class MyNotification {
   String? image;
   bool? read;
   String? route;
-  String? arguments;
+  Map<String, dynamic>? arguments;
   Timestamp? createdAt;
   NotificationType? type;
+  bool? pendingDelete;
 
   MyNotification({
     this.id,
@@ -23,7 +26,8 @@ class MyNotification {
     this.route,
     this.arguments,
     this.createdAt,
-    this.type
+    this.type,
+    this.pendingDelete
   });
 
   factory MyNotification.fromJson(Map<String, dynamic> json) => MyNotification(
@@ -34,9 +38,10 @@ class MyNotification {
     image: json["image"],
     read: json["read"],
     route: json["route"],
-    arguments: json["arguments"],
+    arguments: json["arguments"] is String? ? jsonDecode(json["arguments"] ?? '{}') : json["arguments"],
     createdAt: json["createdAt"],
-    type: NotificationType.valueOf(json["type"])
+    type: NotificationType.valueOf(json["type"]),
+    pendingDelete: json["pendingDelete"] ?? false
   );
 
   Map<String, dynamic> toJson() => {
@@ -49,6 +54,7 @@ class MyNotification {
     "route": route,
     "arguments": arguments,
     "createdAt": createdAt,
-    "type": type?.name
+    "type": type?.name,
+    "pendingDelete": pendingDelete
   };
 }

@@ -39,7 +39,7 @@ class NoBgUser extends StatelessWidget {
       backgroundColor: Theme.of(context).primaryColor,
       child: Text(
         username?.initials() ?? 'SN',
-        style: TextStyle(fontWeight: FontWeight.bold),
+        style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onPrimary),
       ),
     );
   }

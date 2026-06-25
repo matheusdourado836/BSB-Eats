@@ -1,9 +1,11 @@
-import 'dart:math';
+import 'dart:developer';
+import 'dart:math' hide log;
 import 'package:bsb_eats/service/firebase_messaging_service.dart';
 import 'package:bsb_eats/service/social_media_service.dart';
 import 'package:bsb_eats/service/user_service.dart';
 import 'package:bsb_eats/shared/model/post.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dio/dio.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../shared/model/user.dart';
@@ -24,6 +26,12 @@ class AuthService {
 
   Future<MyUser?> getLoggedUser() async {
     MyUser? user;
+    // final dio = Dio();
+    // final response = await dio.post(
+    //   'https://www.nylus.space/app/create-prompt',
+    //   data: [{"appName":"Pizzaria do Zé","appFunction":"Disponibilizar um cardápio digital visualmente atraente onde clientes podem personalizar seus hambúrgueres em um fluxo passo a passo (pão, tipo/ponto da carne, queijo, remover ingredientes, adicionais), montar combos (com batata e bebida), usar cupons e fazer pedidos para delivery (com taxa por CEP/bairro) ou retirada. O pagamento deve ser integrado (Cartão, Pix, dinheiro com troco).","targetAudience":"Donos de hamburguerias artesanais que buscam oferecer uma experiência de pedido premium, se diferenciar da concorrência e aumentar o ticket médio através de um aplicativo próprio, com personalização completa dos lanches.","purposeBeforeAfter":"Aumentar o ticket médio com a venda de adicionais e combos, agilizar o fluxo de pedidos na cozinha com comandas detalhadas, fortalecer a marca com um app próprio e criar um relacionamento direto com os clientes. O painel admin permitirá ver estatísticas de vendas e os produtos mais vendidos, além de gerenciar o horário de funcionamento e um modo 'alta demanda' com taxas dinâmicas.","whoWillUse":"Clientes para montar seus lanches e fazer pedidos; o time da cozinha para receber os pedidos detalhados em um painel; o gerente para atualizar o cardápio, promoções e analisar as estatísticas de venda no painel de administrador.","mainMenu":"Cardápio (com categorias: Artesanais, Smash, Combos), Tela de Monte seu Lanche (passo a passo), Carrinho de Compras, Checkout (com endereço e pagamento), Status do Pedido (com notificações), Perfil do Cliente (com histórico e favoritos), Painel de Administrador (gestão de produtos, pedidos, estatísticas).","additionalFeatures":"","appLanguage":"Português","font":"Roboto","targetAI":"Lovable","complementaryFeatures":["Design 100% Responsivo"],"primaryColor":"#8000FF","secondaryColor":"#1F1F1F","backgroundColor":"#171717","foregroundColor":"#FFFFFF"}]
+    // );
+    // log('OLHA A RESPONSE AEEEEEE $response');
     if(_auth.currentUser == null) {
       return null;
     }
@@ -33,6 +41,8 @@ class AuthService {
         user = MyUser.fromJson(dbUser);
         user?.emailVerified = _auth.currentUser?.emailVerified;
         if(user?.emailVerified != true) return;
+        user?.providers ??= [];
+        user?.providers = _getUserProviders();
         final token = await _setUserToken();
         user?.fcmToken = token;
         user?.likes ??= [];
@@ -42,6 +52,16 @@ class AuthService {
     });
 
     return user;
+  }
+
+  List<String> _getUserProviders() {
+    final user = _auth.currentUser;
+    if(user != null) {
+      final providerIds = user.providerData.map((p) => p.providerId).toList();
+      return providerIds;
+    }
+
+    return [];
   }
 
   Future<String?> _setUserToken() async {
@@ -85,10 +105,14 @@ class AuthService {
   Future<UserCredential?> reauthenticateUser(String email, String password) async {
     final userCredential = await _auth.signInWithEmailAndPassword(email: email, password: password);
     if(userCredential.credential != null) {
-      return await _auth.currentUser?.reauthenticateWithCredential(userCredential.credential!);
+      return await reauthenticateWithCredential(userCredential.credential!);
     }
 
     return null;
+  }
+
+  Future<UserCredential> reauthenticateWithCredential(AuthCredential credential) async {
+    return await _auth.currentUser!.reauthenticateWithCredential(credential);
   }
 
   Future<void> updatePassword(String newPassword) async {
@@ -100,15 +124,19 @@ class AuthService {
       final userId = _auth.currentUser!.uid;
       final userPostsSnapshot = await _database.collection('posts').where('authorID', isEqualTo: userId).get();
       final userPosts = userPostsSnapshot.docs.map((doc) => Post.fromJson(doc.data())).toList();
+      final files = await _storage.ref().child('users/$userId').listAll();
+      await Future.wait(files.items.map((file) => file.delete()));
       await Future.wait(userPosts.map((p) => _socialMediaService.deletePost(post: p)));
       await _database.collection('usernames').doc(user.username).delete();
       await _database.collection('users').doc(userId).delete();
       await _auth.currentUser!.delete();
-      final files = await _storage.ref().child('users/$userId').listAll();
-      await Future.wait(files.items.map((file) => file.delete()));
       return;
-    }on FirebaseException catch(_) {
+    }on FirebaseException catch(e) {
+      print('ERRO FIREBASE AUTH $e');
       return;
+    }catch(e) {
+      print('ERRO DESCONHECIDO AO DELETAR CONTA $e');
+      rethrow;
     }
   }
 
@@ -199,7 +227,7 @@ class AuthService {
   }
 
   Future<OAuthCredential?> getGoogleCredential() async {
-    try{
+    try {
       final GoogleSignInAccount gUser = await _gAuth.authenticate();
 
       final GoogleSignInAuthentication gAuth = gUser.authentication;
@@ -209,6 +237,7 @@ class AuthService {
       );
       return credential;
     }on GoogleSignInException catch(_) {}
+
     return null;
   }
 
@@ -219,8 +248,8 @@ class AuthService {
     ]);
 
     final oAuthCredential = OAuthProvider('apple.com').credential(
-      idToken: appleCredential.identityToken,
-      accessToken: appleCredential.authorizationCode
+        idToken: appleCredential.identityToken,
+        accessToken: appleCredential.authorizationCode
     );
 
     return oAuthCredential;

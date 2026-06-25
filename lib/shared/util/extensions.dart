@@ -81,6 +81,8 @@ extension FirebaseTranslator on FirebaseAuthException {
         return 'Operação não permitida.';
       case 'too-many-requests':
         return 'Muitas tentativas. Tente novamente mais tarde.';
+      case 'user-mismatch':
+        return 'A conta selecionada não corresponde ao usuário atual.';
       default:
         return 'Ocorreu um erro inesperado. Tente novamente mais tarde.';
     }
@@ -90,7 +92,7 @@ extension FirebaseTranslator on FirebaseAuthException {
 extension BrFormat on DateTime {
 
   String formatted({bool includeTime = false}) {
-    return '${day < 10 ? '0$day' : day}/${month < 10 ? '0$month' : month}/$year ${includeTime ? '${hour > 9 ? hour : '0$hour'}h ${minute > 9 ? minute : '0$minute'}m' : ''}'.trim();
+    return '${day < 10 ? '0$day' : day}/${month < 10 ? '0$month' : month}/$year ${includeTime ? 'às ${hour > 9 ? hour : '0$hour'}:${minute > 9 ? minute : '0$minute'}' : ''}'.trim();
   }
 
 

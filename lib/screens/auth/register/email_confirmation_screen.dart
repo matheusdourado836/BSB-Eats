@@ -81,7 +81,7 @@ class _EmailConfirmationScreenState extends State<EmailConfirmationScreen> {
                       style: theme().textTheme.titleLarge!.copyWith(fontSize: 17, height: 3)
                   ),
                   TextSpan(
-                      text: '\ncheque seu email e clique no link de confirmação para cocluir seu cadastro.',
+                      text: '\ncheque seu email e clique no link de confirmação para concluir seu cadastro.',
                       style: theme().textTheme.titleSmall!.copyWith(fontSize: 16, height: 2)
                   )
                 ]

@@ -3,11 +3,12 @@ import 'package:overlay_support/overlay_support.dart';
 import 'local_notification_widget.dart';
 
 OverlaySupportEntry showNotification({
+  required int id,
   required String title,
   String? subtitle,
   String? image,
   String? route,
-  String? arguments,
+  Map<String, dynamic>? arguments,
 }) {
   return showSimpleNotification(
     background: Colors.transparent,
@@ -15,6 +16,7 @@ OverlaySupportEntry showNotification({
     slideDismissDirection: DismissDirection.vertical,
     duration: const Duration(seconds: 5),
     LocalNotificationWidget(
+      id: id,
       title: title,
       subtitle: subtitle,
       image: image,

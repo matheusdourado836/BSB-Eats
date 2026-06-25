@@ -16,6 +16,7 @@ class SocialMediaController extends ChangeNotifier {
   List<MyUser> users = [];
   List<Post> posts = [];
   DocumentSnapshot? lastPostDoc;
+  DocumentSnapshot? lastCommentDoc;
   List<Comment> comments = [];
   bool loading = false;
   bool loadingComments = false;
@@ -40,8 +41,11 @@ class SocialMediaController extends ChangeNotifier {
   Future<Post?> fetchPostById(String postId) async {
     final post = await _service.fetchPostById(postId);
     if (post == null) return null;
-    post.author = await _userService.getUserById(id: post.authorID!);
-    post.restaurant = await _restaurantService.getRestaurantById(id: post.taggedRestaurant?.first ?? '');
+    await Future.wait([
+      _userService.getUserById(id: post.authorID!).then((value) => post.author = value),
+      _restaurantService.getRestaurantById(id: post.taggedRestaurant!.first).then((value) => post.restaurant = value),
+      _service.getCommentsCount(post.id).then((value) => post.qtdComentarios = value),
+    ]);
     return post;
   }
 
@@ -134,12 +138,69 @@ class SocialMediaController extends ChangeNotifier {
 
   Future<List<Restaurante>> searchRestaurants(String query) async => _service.searchRestaurants(query);
 
-  Future<void> getComments({required String postId}) async {
-    loadingComments = true;
-    notifyListeners();
-    comments = await _service.fetchComments(postId: postId) ?? [];
-    loadingComments = false;
-    notifyListeners();
+  Future<int> getCommentsAnswersCount(String? postId, String? commentId) async => _service.getCommentsAnswersCount(postId, commentId);
+
+  Future<List<Comment>> getComments({required String postId, int pageSize = 10}) async {
+    try {
+      final fetched = await _service.fetchComments(postId: postId, pageSize: pageSize, startAfter: lastCommentDoc);
+
+      lastCommentDoc = fetched.lastOrNull;
+      comments = await Future.wait(fetched.map((c) async {
+        final data = c.data()! as Map<String, dynamic>;
+        final user = await _userService.getUserById(id: data["authorId"]);
+        return Comment(
+          id: c.id,
+          authorId: user?.id,
+          authorName: user?.username,
+          authorPhoto: user?.profilePhotoUrl,
+          verifiedUser: user?.verified,
+          text: data["text"],
+          createdAt: DateTime.tryParse(data["createdAt"]),
+        );
+      }).toList());
+
+      await Future.wait(comments.map((c) async {
+        c.qtdAnswers = await getCommentsAnswersCount(postId, c.id!);
+
+        if (c.qtdAnswers == 1) {
+          final res = await fetchCommentAnswers(
+            postId: postId,
+            commentId: c.id!,
+            pageSize: 1,
+          );
+
+          if (res.isNotEmpty) {
+            final answers = await Future.wait(res.map((doc) async {
+              final data = doc.data()! as Map<String, dynamic>;
+              final user = await _userService.getUserById(id: data["authorId"]);
+              return Comment(
+                id: doc.id,
+                authorId: user?.id,
+                authorName: user?.username,
+                authorPhoto: user?.profilePhotoUrl,
+                verifiedUser: user?.verified,
+                text: data["text"],
+                createdAt: DateTime.tryParse(data["createdAt"]),
+              );
+            }));
+
+            c.answers = answers;
+            c.lastAnswerDoc = res.lastOrNull;
+          }
+        }
+      }));
+
+      return comments;
+    } catch (e, s) {
+      print("❌ Erro ao carregar comentários: $e");
+      print(s);
+      lastCommentDoc = null;
+      return [];
+    }
+  }
+
+  Future<List<QueryDocumentSnapshot<Object?>>> fetchCommentAnswers({int pageSize = 20, required String? postId, required String commentId, DocumentSnapshot? startAfter}) async {
+    return await _service.fetchCommentAnswers(pageSize: pageSize, postId: postId, commentId: commentId, startAfter: startAfter);
   }
 
   Future<void> postComment({required String postId, required String postAuthorId, required Comment comment}) async {
@@ -157,9 +218,39 @@ class SocialMediaController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> postCommentAnswer({
+    required Comment comment,
+    required String postId,
+    required String? postOwnerId,
+    required String commentId,
+    required String? replyAuthorId,
+    required String? replyAuthorName
+  }) async {
+    final id = await _service.postCommentAnswer(postId: postId, commentId: commentId, comment: comment);
+    comment.id = id;
+    final index = comments.indexWhere((c) => c.id == commentId);
+    if(index != -1) {
+      comments[index].answers ??= [];
+      comments[index].answers!.add(comment);
+    }
+    _service.sendCommentAnswerNotification(
+        postId: postId,
+        postOwnerId: postOwnerId,
+        commentId: commentId,
+        replyAuthorId: comment.authorId,
+        replyAuthorName: replyAuthorName
+    );
+    notifyListeners();
+  }
+
   Future<void> deleteComment({required String postId, required String commentId}) async {
     await _service.deleteComment(postId: postId, commentId: commentId);
     comments.removeWhere((element) => element.id == commentId);
+    notifyListeners();
+  }
+
+  Future<void> deleteCommentAnswer({required String postId, required String commentId, required String answerId}) async {
+    await _service.deleteCommentAnswer(postId: postId, commentId: commentId, answerId: answerId);
     notifyListeners();
   }
 

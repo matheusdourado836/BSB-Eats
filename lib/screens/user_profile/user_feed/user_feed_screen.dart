@@ -28,6 +28,7 @@ class _UserFeedScreenState extends State<UserFeedScreen> {
     _posts = List<Post>.from(widget.posts);
     widget.eventBus?.on().listen((event) {
       if(event is Map && event.keys.first == 'deleted') {
+        if(!mounted) return;
         final postId = event.values.first;
         setState(() => _posts.removeWhere((p) => p.id == postId));
       }

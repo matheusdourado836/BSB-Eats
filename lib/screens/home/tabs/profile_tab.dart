@@ -53,6 +53,7 @@ class _ProfileTabState extends State<ProfileTab> with SingleTickerProviderStateM
         );
       });
     } catch (error) {
+      if(!mounted) return;
       setState(() {
         _state = _state.copyWith(
           error: error,
@@ -63,7 +64,7 @@ class _ProfileTabState extends State<ProfileTab> with SingleTickerProviderStateM
   }
   
   Future<void> fetchUserInfo() async {
-    currentUser = _userController.currentUser!;
+    currentUser = await _userController.getUserById(_userController.currentUser?.id);
     currentUser!.postsCount = await _userController.getUserPostsCount(currentUser?.id);
     final res = await Future.wait([
       _userController.getFollowersAndFollowingCount(userId: currentUser!.id!, collection: 'followers'),
@@ -192,11 +193,17 @@ class _ProfileTabState extends State<ProfileTab> with SingleTickerProviderStateM
                   scrolledUnderElevation: 0,
                   leadingWidth: 24,
                   title: Row(
-                    spacing: 4,
+                    spacing: 6,
                     children: [
-                      Flexible(child: Text('@${currentUser?.username ?? ''}')),
-                      if(currentUser?.verified == true)
-                        const Icon(Icons.verified, color: Colors.blue, size: 16)
+                      Image.asset(
+                        'assets/images/coin.png',
+                        width: 30,
+                        height: 30,
+                      ),
+                      Text('${(currentUser?.pontos ?? 0).toString().toFriendlyQuantity()} moedas', style: const TextStyle())
+                      // Flexible(child: Text('@${currentUser?.username ?? ''}')),
+                      // if(currentUser?.verified == true)
+                      //   const Icon(Icons.verified, color: Colors.blue, size: 16)
                     ],
                   ),
                   actions: [

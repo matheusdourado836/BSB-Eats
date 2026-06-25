@@ -2,10 +2,12 @@ import 'dart:io';
 import 'package:bsb_eats/screens/admin/widgets/show_image_source_widget.dart';
 import 'package:bsb_eats/shared/util/extensions.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../controller/social_media_controller.dart';
 import '../../../controller/user_controller.dart';
 import '../../../shared/model/restaurante.dart';
+import '../../../shared/model/user.dart';
 import '../../../shared/widgets/chip_text_field.dart';
 import '../../../shared/widgets/notification_image.dart';
 
@@ -23,30 +25,36 @@ class _AddNotificationScreenState extends State<AddNotificationScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _restaurantController = TextEditingController();
+  final TextEditingController _pessoasController = TextEditingController();
   final ValueNotifier<String> _title = ValueNotifier('');
   final ValueNotifier<String> _desc = ValueNotifier('');
   Set<Restaurante>? _selectedRestaurant;
-  static final List<String> _routes = ['/coupons', '/restaurant'];
+  Set<MyUser>? _selectedPeople;
+  static final List<String> _routes = ['/coupons', '/restaurant', '/reward', 'Nenhuma'];
   String _selectedOption = '/coupons';
+  String _route = '/coupons';
   String? _notificationImage;
   Widget? imageProvider;
   bool _loading = false;
   bool _success = false;
   String suffix = '';
+  dynamic arguments = '';
 
   Future<void> _sendNotification() async {
     if(!(_formKey.currentState?.validate() ?? false)) return;
     try{
       setState(() => _loading = true);
       final imageRef = (_notificationImage?.startsWith('https://') ?? false) ? _notificationImage! : await _socialMediaController.uploadNotificationImage(_notificationImage);
-      _success = await _userController.setNotification({
-        'type': 'global',
+      final data = {
+        'type': _selectedPeople?.isEmpty ?? true ? 'global' : 'group',
         'title': _titleController.text,
         'body': _descController.text,
         'image': imageRef,
-        'route': _selectedOption == '/coupons' ? _selectedOption : '$_selectedOption/$suffix',
-        'arguments': ''
-      });
+        'route': _route,
+        'userIds': _selectedPeople?.map((u) => u.id).toList(),
+        'arguments': arguments
+      };
+      _success = await _userController.setNotification(data);
       if(_success) {
         showCustomSnackBar(child: const Text('Notificação enviada com sucesso!'));
         Navigator.pop(context);
@@ -54,7 +62,7 @@ class _AddNotificationScreenState extends State<AddNotificationScreen> {
         showCustomSnackBar(child: const Text('Erro ao enviar notificação'));
       }
     }catch(e) {
-      showCustomSnackBar(child: Text('Erro ao fazer upload $e'));
+      showCustomSnackBar(child: Text('Erro ao enviar notificação $e'));
     }finally {
       setState(() => _loading = false);
     }
@@ -166,6 +174,10 @@ class _AddNotificationScreenState extends State<AddNotificationScreen> {
                           _restaurantController.clear();
                           _selectedRestaurant = null;
                         }
+                        _route = newValue ?? '';
+                        if(newValue == 'Nenhuma') {
+                          _route = '';
+                        }
                         setState(() => _selectedOption = newValue!);
                       },
                       items: _routes.map((r) => DropdownMenuItem(
@@ -191,15 +203,61 @@ class _AddNotificationScreenState extends State<AddNotificationScreen> {
                           _selectedRestaurant ??= {};
                           _selectedRestaurant!.add(tag);
                           suffix = tag.id;
+                          _route = '/restaurant/$suffix';
                         }),
                         onItemRemoved: (tag) => setState(() {
                           _selectedRestaurant?.remove(tag);
                           suffix = '';
+                          _route = '/restaurant';
                         })
                       ),
                       if(_selectedRestaurant?.isNotEmpty ?? false)
                         Text(
                           'Ao clicar na notificação, o usuário será redirecionado para este restaurante',
+                          style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey),
+                        )
+                    ],
+                  ),
+                if(_selectedOption == '/reward')
+                  Column(
+                    children: [
+                      TextFormField(
+                        keyboardType: TextInputType.number,
+                        onChanged: (v) => arguments = v,
+                        maxLength: 4,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        validator: (value) {
+                          if(value?.isEmpty ?? true) {
+                            return 'Quantidade de moedas é obrigatório';
+                          }else if((int.tryParse(value ?? '') ?? 0) == 0) {
+                            return 'Quantidade de moedas deve ser maior que 0';
+                          }
+                          return null;
+                        },
+                        decoration: const InputDecoration(
+                          labelText: 'Quantidade de moedas',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ChipTextField(
+                          controller: _pessoasController,
+                          applyPadding: false,
+                          label: 'Enviar para usuários (opcional)',
+                          hint: 'digite o nome das pessoas aqui...',
+                          fetchSuggestions: (value) async => await _socialMediaController.fetchUsers(value.trim()),
+                          selectedItems: _selectedPeople,
+                          onItemAdded: (tag) => setState(() {
+                            _selectedPeople ??= {};
+                            _selectedPeople!.add(tag);
+                          }),
+                          onItemRemoved: (tag) => setState(() {
+                            _selectedPeople?.remove(tag);
+                          })
+                      ),
+                      const SizedBox(height: 4),
+                      if(_selectedPeople?.isEmpty ?? true)
+                        Text(
+                          'Se nenhum usuário for selecionado, a recompensa será enviada para todos os usuários',
                           style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey),
                         )
                     ],

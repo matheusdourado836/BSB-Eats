@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 import 'package:provider/provider.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import '../../../controller/restaurant_controller.dart';
 import '../../../service/firebase_analytics_service.dart';
 import '../../../shared/model/enums.dart';
@@ -61,6 +62,11 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
         );
       });
     } catch (error) {
+      Sentry.captureException(
+        error,
+        stackTrace: StackTrace.current,
+      );
+      if(!mounted) return;
       setState(() {
         _state = _state.copyWith(
           error: error,

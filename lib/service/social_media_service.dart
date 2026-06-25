@@ -8,6 +8,7 @@ import 'package:bsb_eats/shared/model/user.dart';
 import 'package:bsb_eats/shared/util/extensions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 class SocialMediaService {
   static final FirebaseFirestore _database = FirebaseFirestore.instance;
@@ -108,13 +109,13 @@ class SocialMediaService {
     final reviewId = post.avaliacao?.id;
     final futures = <Future>[];
     futures.addAll([
-      _database.collection('posts').doc(post.id).delete(),
       _database.collection('restaurantes').doc(post.taggedRestaurant?.firstOrNull).collection('reviews').doc(reviewId).delete()
     ]);
     post.photosUrls?.map((p) {
       futures.add(deleteImage(p));
     }).toList();
     await Future.wait(futures);
+    await _database.collection('posts').doc(post.id).delete();
     return;
   }
 
@@ -150,17 +151,31 @@ class SocialMediaService {
     return restaurantes;
   }
 
-  Future<List<Comment>?> fetchComments({required String postId}) async {
-    final snapshot = await _database.collection('posts').doc(postId).collection('comments').get();
-    final comments = snapshot.docs.map((doc) => Comment.fromJson(doc.data())).toList();
-    comments.sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
-    for(final comment in comments) {
-      final userSnapshot = await _database.collection('users').doc(comment.authorId).get();
-      comment.authorName = userSnapshot.data()?['username'];
-      comment.authorPhoto = userSnapshot.data()?['profilePhotoUrl'];
-      comment.verifiedUser = userSnapshot.data()?['verified'];
+  Future<List<QueryDocumentSnapshot<Object?>>> fetchComments({required String postId, int pageSize = 20, DocumentSnapshot? startAfter}) async {
+    Query query = _database.collection('posts').doc(postId).collection('comments').orderBy('createdAt', descending: true).limit(pageSize);
+    if (startAfter != null) {
+      query = query.startAfterDocument(startAfter);
     }
-    return comments;
+    final snapshot = await query.get();
+    // final comments = snapshot.docs.map((doc) => Comment.fromJson(doc.data())).toList();
+    // comments.sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
+    // for(final comment in comments) {
+    //   final userSnapshot = await _database.collection('users').doc(comment.authorId).get();
+    //   comment.authorName = userSnapshot.data()?['username'];
+    //   comment.authorPhoto = userSnapshot.data()?['profilePhotoUrl'];
+    //   comment.verifiedUser = userSnapshot.data()?['verified'];
+    // }
+    return snapshot.docs.nonNulls.toList();
+  }
+
+  Future<List<QueryDocumentSnapshot<Object?>>> fetchCommentAnswers({int pageSize = 20, required String? postId, required String commentId, DocumentSnapshot? startAfter}) async {
+    Query query = _database.collection('posts').doc(postId).collection('comments').doc(commentId).collection('answers').orderBy('createdAt').limit(pageSize);
+    if (startAfter != null) {
+      query = query.startAfterDocument(startAfter);
+    }
+    final snapshot = await query.get();
+
+    return snapshot.docs.nonNulls.toList();
   }
 
   Future<String> postComment({required String postId, required Comment comment}) async {
@@ -170,13 +185,37 @@ class SocialMediaService {
     return ref.id;
   }
 
+  Future<String> postCommentAnswer({required String postId, required String commentId, required Comment comment}) async {
+    final ref = await _database.collection('posts').doc(postId).collection('comments').doc(commentId).collection('answers').add(comment.toJson());
+    await ref.update({'id': ref.id});
+    return ref.id;
+
+  }
+
   Future<void> deleteComment({required String postId, required String commentId}) async {
     await _database.collection('posts').doc(postId).collection('comments').doc(commentId).delete();
     await updatePostData(postId, {'qtdComentarios': FieldValue.increment(-1)});
   }
+
+  Future<void> deleteCommentAnswer({required String postId, required String commentId, required String answerId}) async {
+    return await _database.collection('posts').doc(postId).collection('comments').doc(commentId).collection('answers').doc(answerId).delete();
+  }
   
   Future<int> getCommentsCount(String? postId) async {
     AggregateQuerySnapshot snapshot = await _database.collection('posts').doc(postId).collection('comments').count().get();
+
+    return snapshot.count ?? 0;
+  }
+
+  Future<int> getCommentsAnswersCount(String? postId, String? commentId) async {
+    AggregateQuerySnapshot snapshot = await _database
+        .collection('posts')
+        .doc(postId)
+        .collection('comments')
+        .doc(commentId)
+        .collection('answers')
+        .count()
+        .get();
 
     return snapshot.count ?? 0;
   }
@@ -264,10 +303,24 @@ class SocialMediaService {
       }
 
       return;
-    } catch (e) {
-      print('❌ Erro ao deletar notificações: $e');
+    } catch (e, stack) {
+      Sentry.captureException('❌ Erro ao deletar notificações: $e', stackTrace: stack);
     }
   }
+
+  Future<void> sendCommentAnswerNotification({
+    required String? postId,
+    required String? postOwnerId,
+    required String? commentId,
+    required String? replyAuthorId,
+    required String? replyAuthorName
+  }) async => _messagingService.sendCommentAnswerNotification(
+    postId: postId,
+    postOwnerId: postOwnerId,
+    commentId: commentId,
+    replyAuthorId: replyAuthorId,
+    replyAuthorName: replyAuthorName
+  );
 
   Future<void> updatePostData(String postId, Map<String, dynamic> info) async {
     return await _database.collection('posts').doc(postId).update(info);

@@ -1,19 +1,15 @@
 import 'package:app_links/app_links.dart';
-import 'package:bsb_eats/shared/model/user.dart';
 import 'package:bsb_eats/shared/util/extensions.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../controller/auth_controller.dart';
-import '../../controller/user_controller.dart';
 
 class InitialSplashScreen extends StatefulWidget {
-  final RemoteMessage? initialMessage;
   final String? placeId;
   final String? postId;
   final String? userId;
-  const InitialSplashScreen({super.key, this.initialMessage, this.placeId, this.postId, this.userId});
+  const InitialSplashScreen({super.key, this.placeId, this.postId, this.userId});
 
   @override
   State<InitialSplashScreen> createState() => _InitialSplashScreenState();
@@ -23,7 +19,6 @@ class _InitialSplashScreenState extends State<InitialSplashScreen> {
   late final AuthController authController;
   final AppLinks _appLinks = AppLinks();
   String? _pendingRestaurantId;
-  MyUser? user;
 
   @override
   void initState() {
@@ -70,14 +65,6 @@ class _InitialSplashScreenState extends State<InitialSplashScreen> {
         //_navigateToLogin();
         _navigateToGuest();
       } else {
-        if(widget.initialMessage != null) {
-          if(widget.initialMessage!.data["route"]?.isNotEmpty ?? false) {
-            Navigator.pushReplacementNamed(context, '/home');
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              Navigator.pushNamed(context, widget.initialMessage!.data["route"], arguments: widget.initialMessage!.data["arguments"]);
-            });
-          }
-        }
         if(widget.placeId != null) {
           _navigateToDetails();
         }else if(widget.postId != null) {
@@ -107,10 +94,6 @@ class _InitialSplashScreenState extends State<InitialSplashScreen> {
   }
 
   Future<void> _navigateToHome() async {
-    if(widget.userId?.isNotEmpty ?? false) {
-      final userController = Provider.of<UserController>(context, listen: false);
-      user = await userController.getUserById(widget.userId!);
-    }
     Navigator.pushReplacementNamed(context, '/home');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_pendingRestaurantId != null) {
@@ -150,7 +133,7 @@ class _InitialSplashScreenState extends State<InitialSplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: theme().primaryColor,
+      color: const Color(0xff183A13),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

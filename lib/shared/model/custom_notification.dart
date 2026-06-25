@@ -3,7 +3,7 @@ class CustomNotification {
   final String title;
   final String body;
   String? route;
-  String? arguments;
+  Map<String, dynamic>? arguments;
   String? image;
   final String payload;
 

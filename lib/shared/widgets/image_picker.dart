@@ -2,16 +2,22 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:top_snackbar_flutter/top_snack_bar.dart';
 import 'image_cropper.dart';
 
 Future<File?> _pickImage(BuildContext context, ImageSource source, {bool crop = true}) async {
   var storageStatus = await Permission.storage.status;
   var cameraStatus = await Permission.camera.status;
-  if (source == ImageSource.camera && cameraStatus.isDenied) {
-    Permission.camera.request();
-  }
-  if(source == ImageSource.gallery && storageStatus.isDenied) {
-    Permission.storage.request();
+  if (source == ImageSource.camera && (cameraStatus.isDenied || cameraStatus.isPermanentlyDenied)) {
+    final granted = await Permission.camera.request();
+    if(!granted.isGranted) {
+      _requestPermission(context);
+      return null;
+    }
+  }else if(source == ImageSource.gallery && (storageStatus.isDenied || storageStatus.isPermanentlyDenied)) {
+    final granted = await Permission.storage.request();
+    _requestPermission(context, label: 'galeria');
+    if(!granted.isGranted) return null;
   }
   final picker = ImagePicker();
   final pickedFile = await picker.pickImage(source: source, imageQuality: 80);
@@ -189,3 +195,36 @@ Future<dynamic> pickSingleFile(BuildContext context, {bool crop = true}) async {
   final file = await _pickImage(context, ImageSource.gallery, crop: crop);
   return file;
 }
+
+Future<void> _requestPermission(BuildContext context, {String label = 'camera'}) async => showTopSnackBar(
+  Overlay.of(context),
+  Material(
+    color: Colors.transparent,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadiusDirectional.circular(12),
+        color: const Color(0xff2E322C)
+      ),
+      child: Column(
+        children: [
+          Text(
+            'Você precisa permitir o acesso à $label.',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 16),
+          ),
+          TextButton(
+            onPressed: () => openAppSettings(),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.secondary,
+              textStyle: TextStyle(
+                decoration: TextDecoration.underline,
+                fontSize: 16
+              )
+            ),
+            child: Text('Abrir configurações')
+          )
+        ],
+      ),
+    ),
+  )
+);

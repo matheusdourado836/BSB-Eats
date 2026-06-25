@@ -18,6 +18,7 @@ import 'package:bsb_eats/screens/onboarding/onboarding_screen.dart';
 import 'package:bsb_eats/screens/posts/edit_post_screen.dart';
 import 'package:bsb_eats/screens/posts/post_detail_screen.dart';
 import 'package:bsb_eats/screens/posts/upload_screen.dart';
+import 'package:bsb_eats/screens/reward/reward_screen.dart';
 import 'package:bsb_eats/screens/splash/initial_splash_screen.dart';
 import 'package:bsb_eats/screens/user_profile/user_feed/user_feed_screen.dart';
 import 'package:bsb_eats/shared/model/restaurante.dart';
@@ -25,6 +26,7 @@ import 'package:bsb_eats/shared/model/user.dart';
 import 'package:event_bus/event_bus.dart';
 import 'package:flutter/material.dart';
 import 'package:page_transition/page_transition.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import '../screens/admin/pages/manage_restaurants_screen.dart';
 import '../screens/details/restaurant_details_screen.dart';
 import '../screens/profile/profile_screen.dart';
@@ -60,6 +62,7 @@ class AppRoutes {
   static const String upload = '/upload';
   static const String editPost = '/edit_post';
   static const String postDetails = '/post_details';
+  static const String reward = '/reward';
 
   static Map<String, WidgetBuilder> routes = {
     
@@ -76,6 +79,7 @@ class AppRoutes {
     }
     if(uri.pathSegments.isNotEmpty && uri.pathSegments.first == 'post') {
       final postId = uri.pathSegments.length > 1 ? uri.pathSegments[1] : null;
+      Sentry.captureMessage('Post Id recebido $postId da uri $uri');
       return PageTransition(
         type: PageTransitionType.rightToLeftWithFade,
         child: InitialSplashScreen(postId: postId),
@@ -109,16 +113,16 @@ class AppRoutes {
           type: PageTransitionType.fade,
           child: const LoginScreen(),
         );
+      case register:
+        return PageTransition(
+          type: PageTransitionType.bottomToTop,
+          child: const RegisterScreen(),
+        );
       case restaurantDetails:
         final placeId = settings.arguments as String?;
         return PageTransition(
           type: PageTransitionType.rightToLeftWithFade,
           child: RestaurantDetailsScreen(placeId: placeId),
-        );
-      case register:
-        return PageTransition(
-          type: PageTransitionType.bottomToTop,
-          child: const RegisterScreen(),
         );
       case emailConfirmation:
         Map<String, dynamic>? map = settings.arguments as Map<String, dynamic>?;
@@ -151,7 +155,12 @@ class AppRoutes {
           child: const ProfileTab(),
         );
       case profile:
-        final userId = settings.arguments as String;
+        String userId = '';
+        if(settings.arguments is String) {
+          userId = settings.arguments as String;
+        }else if(settings.arguments is Map<String, dynamic>?) {
+          userId = (settings.arguments as Map<String, dynamic>?)?["userId"];
+        }
         return PageTransition(
           type: PageTransitionType.fade,
           child: ProfileScreen(userId: userId),
@@ -227,6 +236,12 @@ class AppRoutes {
         return PageTransition(
           type: PageTransitionType.fade,
           child: PostDetailScreen(postId: postId),
+        );
+      case reward:
+        final map = settings.arguments as Map<String, dynamic>?;
+        return PageTransition(
+          type: PageTransitionType.fade,
+          child: RewardScreen(qtdPoints: int.tryParse(map?["points"] ?? '') ?? 0, notificationId: map?["id"]),
         );
       case about:
         return MaterialPageRoute(builder: (_) => const Scaffold(body: Center(child: Text('About Page'))));

@@ -1,5 +1,6 @@
 import 'package:bsb_eats/controller/auth_controller.dart';
 import 'package:bsb_eats/controller/user_controller.dart';
+import 'package:bsb_eats/screens/user_profile/user_profile_config/app_version_widget.dart';
 import 'package:bsb_eats/shared/model/app_feedback.dart';
 import 'package:bsb_eats/shared/model/user.dart';
 import 'package:bsb_eats/shared/util/extensions.dart';
@@ -30,7 +31,11 @@ class _ProfileConfigScreenState extends State<ProfileConfigScreen> {
         backgroundColor: theme().primaryColor,
         child: Text(
           username ?? 'SN',
-          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 48,
+            fontWeight: FontWeight.bold,
+            color: theme().colorScheme.onPrimary
+          ),
         ),
       );
     }
@@ -170,8 +175,7 @@ class _ProfileConfigScreenState extends State<ProfileConfigScreen> {
               ),
             ),
             const SizedBox(height: 60),
-            const Text('Versão', style: TextStyle(fontSize: 12)),
-            Text('1.1.3', style: TextStyle(fontSize: 12))
+            const AppVersionWidget()
           ],
         ),
       ),

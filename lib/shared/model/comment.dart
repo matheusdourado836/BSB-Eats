@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Comment {
   String? id;
   String? authorId;
@@ -5,7 +7,11 @@ class Comment {
   String? authorPhoto;
   bool? verifiedUser;
   String? text;
+  List<Comment>? answers;
+  int? qtdAnswers;
+  QueryDocumentSnapshot<Object?>? lastAnswerDoc;
   DateTime? createdAt;
+  bool? loadingAnswers;
 
   Comment({
     this.id,
@@ -14,7 +20,11 @@ class Comment {
     this.authorPhoto,
     this.verifiedUser,
     this.text,
-    this.createdAt
+    this.answers,
+    this.qtdAnswers,
+    this.lastAnswerDoc,
+    this.createdAt,
+    this.loadingAnswers
   });
 
   factory Comment.fromJson(Map<String, dynamic> json) => Comment(

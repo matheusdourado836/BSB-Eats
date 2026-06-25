@@ -104,22 +104,61 @@ class UserController extends ChangeNotifier {
   }
 
   void setGlobalNotificationsRead(List<MyNotification>? notifications) {
-    for(final notification in notifications ?? []) {
-      currentUser!.globalNotificationsRead ??= [];
+    currentUser!.globalNotificationsRead ??= [];
+    for(final notification in (notifications ?? []).where((n) => n.type == NotificationType.GLOBAL)) {
       notification.read = currentUser!.globalNotificationsRead!.contains(notification.id);
     }
   }
 
   Future<void> deleteAllNotifications() async {
+    cancelAllNotifications();
     await _service.deleteAllNotifications();
     final globalNotifications = currentUser!.notifications?.where((n) => n.type == NotificationType.GLOBAL).toList();
     final globalNotificationsIds = globalNotifications?.map((n) => n.id).nonNulls.toList();
     currentUser!.globalNotificationsDeleted ??= [];
     currentUser?.globalNotificationsDeleted!.addAll(globalNotificationsIds!);
-    updateUserData({"globalNotificationsDeleted": FieldValue.arrayUnion(globalNotificationsIds!)});
+    updateUserData({
+      "globalNotificationsDeleted": FieldValue.arrayUnion(globalNotificationsIds!),
+      "globalNotificationsRead": []
+    });
     currentUser!.notifications = [];
     notifyListeners();
     return;
+  }
+
+  Future<void> deleteNotification(String notificationId, {bool checkForGlobal = false}) async {
+    if(checkForGlobal) {
+      if(await _service.checkForGlobalNotification(notificationId)) {
+        currentUser!.globalNotificationsDeleted ??= [];
+        currentUser?.globalNotificationsDeleted!.add(notificationId);
+        await _service.updateUserData({"globalNotificationsDeleted": FieldValue.arrayUnion([notificationId])});
+        notifyListeners();
+        return;
+      }
+    }
+    currentUser!.notifications?.removeWhere((element) => element.id == notificationId);
+    await _service.deleteNotification(notificationId);
+    notifyListeners();
+    return;
+  }
+
+  Future<bool?> getNotification(String? notificationId) async {
+    return await _service.getNotification(notificationId);
+  }
+
+  Future<void> updateNotification(MyNotification notification, Map<String, dynamic> data, {bool add = false}) async {
+    if(notification.type == NotificationType.GLOBAL) {
+      currentUser!.globalNotificationsDeleted ??= [];
+      if(add) {
+        currentUser!.globalNotificationsDeleted!.add(notification.id!);
+      }else {
+        currentUser!.globalNotificationsDeleted!.removeWhere((element) => element == notification.id);
+      }
+      final action = add ? FieldValue.arrayUnion([notification.id]) : FieldValue.arrayRemove([notification.id]);
+      await _service.updateUserData({"globalNotificationsDeleted": action});
+      return;
+    }
+    return await _service.updateNotification(notification.id, data);
   }
 
   Future<bool> setNotification(Map<String, dynamic> data) async => _service.setNotification(data);
@@ -127,7 +166,9 @@ class UserController extends ChangeNotifier {
   Future<void> setNotificationRead({required String notificationId, NotificationType? type}) async {
     currentUser!.globalNotificationsRead ??= [];
     currentUser!.globalNotificationsRead?.add(notificationId);
-    return await _service.setNotificationRead(notificationId: notificationId, type: type);
+    await _service.setNotificationRead(notificationId: notificationId, type: type);
+    notifyListeners();
+    return;
   }
 
   Future<void> getFavorites() async {
@@ -184,6 +225,8 @@ class UserController extends ChangeNotifier {
     currentUser!.likedPosts = await _service.getLikedPosts(userId: currentUser!.id!);
   }
 
+  Future<List<MyUser>> getLikes({required String? postId}) async => _service.getLikes(postId: postId);
+
   Future<void> toggleLike(bool isLiked, Post post, Like like, String username) async {
     currentUser!.likedPosts ??= [];
     if(isLiked) {
@@ -214,5 +257,15 @@ class UserController extends ChangeNotifier {
 
   Future<void> updateUserData(Map<String, dynamic> info, {String? userId}) async => _service.updateUserData(info, userId: userId);
 
+  Future<void> sendUserStatusNotification({
+    required String? userId,
+    required String? type,
+    required bool? newValue,
+  }) async => await _service.sendUserStatusNotification(userId: userId, type: type, newValue: newValue);
+
   Future<String?> getToken() async => _service.getToken();
+
+  Future<void> cancelNotification(int id) async => _service.cancelNotification(id);
+
+  Future<void> cancelAllNotifications() async => _service.cancelAllNotifications();
 }

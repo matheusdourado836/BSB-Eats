@@ -3,6 +3,7 @@ import 'package:bsb_eats/shared/model/notification.dart';
 import 'package:bsb_eats/shared/model/post.dart';
 import 'package:bsb_eats/shared/model/user_ref.dart';
 import 'package:bsb_eats/shared/util/extensions.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MyUser {
   String? id;
@@ -26,6 +27,7 @@ class MyUser {
   List<MyNotification>? notifications;
   List<String>? globalNotificationsRead;
   List<String>? globalNotificationsDeleted;
+  List<String>? providers;
   bool? emailVerified;
   bool? verified;
   bool? admin;
@@ -33,6 +35,7 @@ class MyUser {
   int? qtdRestaurantsAdded;
   bool? reviewed;
   int? pontos;
+  Timestamp? createdAt;
 
   MyUser({
     this.id,
@@ -56,6 +59,7 @@ class MyUser {
     this.notifications,
     this.globalNotificationsRead,
     this.globalNotificationsDeleted,
+    this.providers,
     this.emailVerified,
     this.verified,
     this.admin,
@@ -63,6 +67,7 @@ class MyUser {
     this.qtdRestaurantsAdded,
     this.reviewed,
     this.pontos,
+    this.createdAt
   });
 
   factory MyUser.fromJson(Map<String, dynamic> json) => MyUser(
@@ -82,7 +87,8 @@ class MyUser {
     reviewed: json["reviewed"],
     pontos: json["pontos"],
     globalNotificationsRead: List<String>.from(json["globalNotificationsRead"] ?? []),
-    globalNotificationsDeleted: List<String>.from(json["globalNotificationsDeleted"] ?? [])
+    globalNotificationsDeleted: List<String>.from(json["globalNotificationsDeleted"] ?? []),
+    createdAt: json["createdAt"],
   );
 
   Map<String, dynamic> toJson() => {
@@ -103,6 +109,7 @@ class MyUser {
     "pontos": pontos,
     "globalNotificationsRead": globalNotificationsRead,
     "globalNotificationsDeleted": globalNotificationsDeleted,
+    'createdAt': createdAt,
   };
 
 }

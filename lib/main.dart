@@ -19,19 +19,14 @@ import 'controller/restaurant_controller.dart';
 import 'firebase_options.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
-GlobalKey<NavigatorState>? navigatorKey = GlobalKey<NavigatorState>();
-RemoteMessage? _initialMessage;
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage? message) async {
-  if(message != null && message.data.containsKey("route")) {
-    navigatorKey!.currentState!.pushNamed(message.data["route"]);
-  }
-}
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage? message) async {}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  _initialMessage = await FirebaseMessaging.instance.getInitialMessage();
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   FirebaseMessagingService firebaseMessagingService = FirebaseMessagingService();
   await firebaseMessagingService.initialize();
@@ -54,6 +49,7 @@ void main() async {
       options.enableNativeCrashHandling = true;
       options.enableAutoPerformanceTracing = true;
       options.enableDeduplication = true;
+      options.enableLogs = true;
       options.enableAutoSessionTracking = true;
       options.enableMemoryPressureBreadcrumbs = true;
       options.anrEnabled = true;
@@ -76,7 +72,7 @@ void main() async {
             ChangeNotifierProvider(create: (_) => RestaurantController()),
             ChangeNotifierProvider(create: (_) => SocialMediaController()),
           ],
-          child: MyApp(initialMessage: _initialMessage),
+          child: const MyApp(),
         ),
       )
     ),
@@ -84,8 +80,7 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
-  final RemoteMessage? initialMessage;
-  const MyApp({super.key, this.initialMessage});
+  const MyApp({super.key});
 
   // This widget is the root of your application.
   @override
@@ -109,7 +104,7 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         home: StreamBuilder(
           stream: authController.authStateChanges,
-          builder: (context, asyncSnapshot) => InitialSplashScreen(initialMessage: initialMessage)
+          builder: (context, asyncSnapshot) => const InitialSplashScreen()
         ),
         routes: AppRoutes.routes,
         onGenerateRoute: (settings) => AppRoutes.generateRoute(settings),

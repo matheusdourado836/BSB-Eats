@@ -32,10 +32,14 @@ class _EditProfileModalState extends State<EditProfileModal> {
       final username = currentUser.nome?.initials();
       return CircleAvatar(
         radius: 70,
-        backgroundColor: theme().colorScheme.secondary,
+        backgroundColor: theme().primaryColor,
         child: Text(
           username ?? 'SN',
-          style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 48,
+            fontWeight: FontWeight.bold,
+            color: theme().colorScheme.onPrimary
+          ),
         ),
       );
     }
@@ -125,7 +129,7 @@ class _EditProfileModalState extends State<EditProfileModal> {
                             height: 35,
                             width: 35,
                             decoration: BoxDecoration(
-                              color: theme().primaryColor,
+                              color: theme().colorScheme.tertiary,
                               borderRadius: BorderRadius.circular(15),
                             ),
                             child: const Icon(Icons.edit, size: 20,),

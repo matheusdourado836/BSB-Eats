@@ -22,6 +22,7 @@ class HomeAppBar extends StatefulWidget implements PreferredSizeWidget {
 
 class _HomeAppBarState extends State<HomeAppBar> {
   final TextEditingController controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
   final _controller = StreamController<int>();
   final EventBus eventBus = EventBus();
   late final _userController = Provider.of<UserController>(context, listen: false);
@@ -34,16 +35,34 @@ class _HomeAppBarState extends State<HomeAppBar> {
     int globalCount = 0;
     int userCount = 0;
 
+    // Garante que a lista e o Set existam
+    _userController.currentUser?.notifications ??= [];
+    final addedIds = <String>{};
+
+    // Preenche o Set com as notificações que já existirem
+    for (final n in _userController.currentUser!.notifications!) {
+      addedIds.add(n.id!);
+    }
+
     // 🔹 Escuta notificações globais
     _globalSub = _userController.getNotificationStream.listen((snapshot) {
       int count = 0;
+
       for (final doc in snapshot.docs) {
-        if (!(_userController.currentUser?.globalNotificationsRead?.contains(doc.id) ?? false)) {
+        if (_userController.currentUser?.globalNotificationsRead?.contains(doc.id) ?? false) {
+          continue; // já lida → ignora
+        }
+
+        final notification = MyNotification.fromJson(doc.data());
+        notification.id = doc.id; // garante que o id esteja setado
+
+        // Se o ID ainda não foi adicionado, insere
+        if (addedIds.add(notification.id!)) {
           count++;
-          _userController.currentUser?.notifications ??= [];
-          _userController.currentUser?.notifications?.add(MyNotification.fromJson(doc.data()));
+          _userController.currentUser!.notifications!.add(notification);
         }
       }
+
       globalCount = count;
       _controller.add(globalCount + userCount);
     });
@@ -51,9 +70,16 @@ class _HomeAppBarState extends State<HomeAppBar> {
     // 🔹 Escuta notificações específicas do usuário
     _userSub = _userController.getUserNotificationStream.listen((snapshot) {
       userCount = snapshot.docs.length;
-      final notifications = snapshot.docs.map((e) => MyNotification.fromJson(e.data())).toList();
-      _userController.currentUser?.notifications ??= [];
-      _userController.currentUser?.notifications?.addAll(notifications);
+
+      for (final doc in snapshot.docs) {
+        final notification = MyNotification.fromJson(doc.data());
+        notification.id = doc.id;
+
+        if (addedIds.add(notification.id!)) {
+          _userController.currentUser!.notifications!.add(notification);
+        }
+      }
+
       _controller.add(globalCount + userCount);
     });
   }
@@ -78,6 +104,7 @@ class _HomeAppBarState extends State<HomeAppBar> {
 
   @override
   void dispose() {
+    _focusNode.unfocus();
     _controller.close();
     _globalSub?.cancel();
     _userSub?.cancel();
@@ -115,6 +142,7 @@ class _HomeAppBarState extends State<HomeAppBar> {
                     flex: 2,
                     child: TextField(
                       controller: controller,
+                      focusNode: _focusNode,
                       onSubmitted: widget.onSearch,
                       autofocus: false,
                       decoration: InputDecoration(
@@ -162,7 +190,10 @@ class _HomeAppBarState extends State<HomeAppBar> {
                 ],
               ),
               ElevatedButton.icon(
-                onPressed: () => widget.onSearch(controller.text),
+                onPressed: () {
+                  _focusNode.unfocus();
+                  widget.onSearch(controller.text);
+                },
                 label: Text('Pesquisar'),
                 icon: const Icon(Icons.search),
               )
@@ -194,6 +225,7 @@ class _HomeAppBarState extends State<HomeAppBar> {
             );
           }
         ),
+        const SizedBox(width: 8)
       ],
     );
   }

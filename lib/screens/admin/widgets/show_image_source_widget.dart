@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../controller/social_media_controller.dart';
@@ -86,7 +87,7 @@ Future<dynamic> showCommonImagesDialog(BuildContext context) async {
                     onTap: () => Navigator.pop(context, imageUrl),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(imageUrl, fit: BoxFit.cover),
+                      child: CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover),
                     ),
                   );
                 },

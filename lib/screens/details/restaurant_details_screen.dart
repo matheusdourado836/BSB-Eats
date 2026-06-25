@@ -212,7 +212,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
             onPressed: () {
               share(
                 title: 'Compartilhar restaurante',
-                text: 'Olha que incrível este restaurante que encontrei!\n${dotenv.get('BSB_EATS_FRIENDLY_BASE_URL')}/restaurant/${widget.placeId}/details'
+                text: 'Olha que incrível este restaurante que encontrei!\n${dotenv.get('BSB_EATS_BASE_URL')}/restaurant/${widget.placeId}/details'
               ).then((res) {
                 if(res == ShareResultStatus.success) {
                   final name = _restaurantController.restaurante!.nome!;

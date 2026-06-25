@@ -133,14 +133,13 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                       widget.eventBus?.fire({
                         'pinned': {
                           'postId': widget.post.id,
-                          'isPinned': res['pin'] == 1
+                          'isPinned': res['pin']
                         }
                       });
                     }else if(res.keys.first == 'deleted') {
                       _socialMediaController
                         .deletePost(post: widget.post)
                         .whenComplete(() {
-                          //_userController.fetchUserPosts(_userController.currentUser!.id!);
                           widget.eventBus?.fire({'deleted': widget.post.id});
                           showCustomTopSnackBar(text: 'Post deletado com sucesso!');
                         });
@@ -289,10 +288,15 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     children: [
       Row(
         children: [
-          _iconRow(
+          _likeRow(
             _isLiked ? Icons.favorite : Icons.favorite_border,
+            (widget.post.qtdCurtidas ?? 0).toString().toFriendlyQuantity(),
             color: _isLiked ? Colors.red : null,
-            widget.post.qtdCurtidas?.toString() ?? '0',
+            onTextPressed: () => showModalBottomSheet(
+              context: context,
+              showDragHandle: true,
+              builder: (context) => LikeListModal(postId: widget.post.id!)
+            ),
             onPressed: () {
               if(_userController.currentUser == null) {
                 showDialog(context: context, builder: (context) => const AskToLoginDialog());
@@ -311,9 +315,10 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
               _socialMediaController.editPostData(widget.post);
             },
           ),
+          const SizedBox(width: 16),
           _iconRow(
             Icons.chat_bubble_outline_rounded,
-            widget.post.qtdComentarios?.toString() ?? '0',
+            (widget.post.qtdComentarios ?? 0).toString().toFriendlyQuantity(),
             onPressed: () => showModalBottomSheet(
               context: context,
               showDragHandle: true,
@@ -322,6 +327,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
               backgroundColor: theme().colorScheme.surface,
               builder: (context) => CommentsSection(
                 post: widget.post,
+                qtdComments: widget.post.qtdComentarios ?? 0,
                 ownerName: widget.post.author?.nome ?? 'anônimo'
               )
             ),
@@ -330,7 +336,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
             onPressed: () {
               share(
                 title: 'Compartilhar post',
-                text: 'Olhe que legal este post que vi no app BSB Eats\n${dotenv.get('BSB_EATS_FRIENDLY_BASE_URL')}/post/${widget.post.id}'
+                text: 'Olhe que legal este post que vi no app BSB Eats\n${dotenv.get('BSB_EATS_BASE_URL')}/post/${widget.post.id}'
               ).then((res) {
                 if(res == ShareResultStatus.success) {
                   final name = widget.post.author!.nome!;
@@ -380,12 +386,28 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     return IconButton(
       onPressed: onPressed,
       icon: Row(
-        spacing: 6,
+        spacing: 14,
         children: [
           Icon(icon, color: color),
-          Text(text, style: TextStyle(fontSize: 16),),
+          Text(text, style: TextStyle(fontSize: 16)),
         ],
       )
+    );
+  }
+
+  Widget _likeRow(IconData icon, String text, {required Function() onPressed, required Function() onTextPressed, Color? color}) {
+    return Row(
+      children: [
+        IconButton(
+          onPressed: onPressed,
+          icon: Icon(icon),
+          color: color,
+        ),
+        InkWell(
+          onTap: onTextPressed,
+          child: Text(text, style: TextStyle(fontSize: 16),)
+        ),
+      ],
     );
   }
 
@@ -639,6 +661,95 @@ class _MoreWidget extends StatelessWidget {
             style: TextButton.styleFrom(alignment: Alignment.centerLeft),
             label: const Text('Excluir', style: TextStyle(color: Colors.red)),
             icon: const Icon(Icons.delete, color: Colors.red),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class LikeListModal extends StatefulWidget {
+  final String postId;
+  const LikeListModal({super.key, required this.postId});
+
+  @override
+  State<LikeListModal> createState() => _LikeListModalState();
+}
+
+class _LikeListModalState extends State<LikeListModal> {
+  late final _userController = Provider.of<UserController>(context, listen: false);
+
+  Future<List<MyUser>> _getLikes() async => await _userController.getLikes(postId: widget.postId);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        if (details.primaryVelocity != null && details.primaryVelocity! > 0) {
+          Navigator.pop(context);
+        }
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          //TODO REMOVER ESSA LINHA NA PROXIMA ATUALIZACAO
+          if(DateTime.now().month < 12)
+            const Center(child: Text('deslize para a direita para fechar')),
+          const Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Curtidas',
+              style: TextStyle(fontSize: 16),
+            ),
+          ),
+          Expanded(
+            child: FutureBuilder(
+              future: _getLikes(),
+              builder: (context, asyncSnapshot) {
+                if(asyncSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
+                if(asyncSnapshot.hasError) {
+                  return Center(
+                    child: Text(asyncSnapshot.error.toString()),
+                  );
+                }
+                final likes = asyncSnapshot.data;
+                return ListView.builder(
+                  itemCount: likes?.length ?? 0,
+                  itemBuilder: (context, index) {
+                    final person = likes?[index];
+                    return ListTile(
+                      onTap: () {
+                        if(_userController.currentUser?.id == person?.id) {
+                          Navigator.pushNamed(context, '/user_profile');
+                        }else {
+                          Navigator.pushNamed(context, '/profile', arguments: person?.id);
+                        }
+                      },
+                      leading: CircleAvatar(
+                        radius: 30,
+                        backgroundImage: CachedNetworkImageProvider(
+                          person?.profilePhotoUrl ?? '',
+                          errorListener: (e) => const NoBgUser(),
+                        ),
+                      ),
+                      title: Row(
+                        spacing: 4,
+                        children: [
+                          Text(person?.username ?? 'anônimo'),
+                          if(person?.verified == true)
+                            const Icon(Icons.verified, size: 14, color: Colors.blue),
+                        ],
+                      ),
+                      subtitle: Text(person?.nome ?? 'anônimo'),
+                    );
+                  }
+                );
+              }
+            ),
           ),
         ],
       ),

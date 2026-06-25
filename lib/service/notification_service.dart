@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -7,11 +8,12 @@ import '../main.dart';
 import '../shared/model/custom_notification.dart';
 
 class NotificationService {
-  late FlutterLocalNotificationsPlugin localNotificationsPlugin;
-  late AndroidNotificationDetails androidNotificationDetails;
+  static final NotificationService _instance = NotificationService._internal();
+  static final FlutterLocalNotificationsPlugin localNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
-  NotificationService() {
-    localNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  factory NotificationService() => _instance;
+
+  NotificationService._internal() {
     _setupNotifications();
   }
 
@@ -40,9 +42,15 @@ class NotificationService {
     if (notificationResponse?.payload?.isEmpty ?? true) return;
 
     try {
-      final String route = notificationResponse!.payload!;
+      String route = notificationResponse!.payload!;
+      Map<String, dynamic>? arguments;
+      if(!notificationResponse.payload!.contains('/post') || !notificationResponse.payload!.contains('/user')) {
+        final data = jsonDecode(notificationResponse.payload!);
+        route = data["route"];
+        arguments = data;
+      }
 
-      navigatorKey?.currentState?.pushNamedAndRemoveUntil(route, (route) => false);
+      navigatorKey.currentState?.pushNamedAndRemoveUntil(route, (route) => false, arguments: arguments);
     } catch (e) {
       debugPrint('Erro ao tratar payload: $e');
     }
@@ -50,14 +58,14 @@ class NotificationService {
 
   void showNotification(CustomNotification notification, String? channelInfo) {
     final channel = (channelInfo == null) ? 'basic' : channelInfo;
-    androidNotificationDetails = AndroidNotificationDetails(
+    final androidNotificationDetails = AndroidNotificationDetails(
       '${channel}_notification',
       channel,
       importance: Importance.max,
       priority: Priority.max,
       enableVibration: true,
       colorized: true,
-      color: navigatorKey?.currentContext == null ? null : Theme.of(navigatorKey!.currentContext!).primaryColor,
+      color: navigatorKey.currentContext == null ? null : Theme.of(navigatorKey.currentContext!).primaryColor,
     );
 
     localNotificationsPlugin.show(
@@ -68,4 +76,10 @@ class NotificationService {
       payload: notification.payload,
     );
   }
+
+  Future<List<ActiveNotification>> getAllActiveNotifications() async => await localNotificationsPlugin.getActiveNotifications();
+
+  Future<void> cancelNotification(int id) async => localNotificationsPlugin.cancel(id);
+
+  Future<void> cancelAllNotifications() async => localNotificationsPlugin.cancelAll();
 }

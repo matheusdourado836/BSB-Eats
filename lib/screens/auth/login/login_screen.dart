@@ -6,12 +6,12 @@ import 'package:bsb_eats/shared/util/extensions.dart';
 import 'package:bsb_eats/shared/widgets/app_logo_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../../controller/auth_controller.dart';
 import '../../../service/food_api_service.dart';
+import '../../../shared/widgets/social_login_container.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -280,6 +280,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _getImagePeriodic() {
     _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if(!mounted) return;
       FoodApiService().getFoodImage().then((value) {
         if(value != null) {
           setState(() => imageBackground = NetworkImage(value));
@@ -326,41 +327,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 //_restauranteOwnerSection(),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class SocialLoginContainer extends StatelessWidget {
-  final String path;
-  final String provider;
-  final Color backgroundColor;
-  final Function() onTap;
-  const SocialLoginContainer({super.key, required this.path,required this.onTap, required this.backgroundColor, required this.provider});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          height: 50,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(50),
-            color: backgroundColor,
-            border: Border.all()
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SvgPicture.asset(path, width: 25, height: 25,),
-              const SizedBox(width: 12),
-              Text('Entrar com $provider', style: TextStyle(color: (backgroundColor == Colors.black) ? Colors.white : Colors.black),)
-            ],
           ),
         ),
       ),

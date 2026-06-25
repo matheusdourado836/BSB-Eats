@@ -1,6 +1,9 @@
+import 'package:bsb_eats/controller/user_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LogoExpandedWidget extends StatefulWidget {
   const LogoExpandedWidget({super.key});
@@ -12,6 +15,17 @@ class LogoExpandedWidget extends StatefulWidget {
 class _LogoExpandedWidgetState extends State<LogoExpandedWidget> {
   bool _animate = false;
   int _count = 0;
+
+  Future<void> _savePoints() async {
+    final userController = Provider.of<UserController>(context, listen: false);
+    int userPoints = userController.currentUser?.pontos ?? 0;
+    final prefs = await SharedPreferences.getInstance();
+    if(!prefs.containsKey('hasEarnedPoints')) {
+      prefs.setBool('hasEarnedPoints', true);
+      userPoints += 10;
+      userController.updateUserData({"pontos": userPoints});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +43,8 @@ class _LogoExpandedWidgetState extends State<LogoExpandedWidget> {
                   _animate = !_animate;
                   if(_count < 10) {
                     _count++;
+                  }if(_count == 10) {
+                    _savePoints();
                   }
                 }),
                 splashColor: Colors.transparent,
@@ -71,8 +87,18 @@ class _LogoExpandedWidgetState extends State<LogoExpandedWidget> {
                 child: const Text('Voltar')
               ),
               const Spacer(),
-              const Text('+10 pontos', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Color(0xFFE6DDAF)))
-                .animate(target: _count == 10 ? 1 : 0)
+              Row(
+                spacing: 8,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    width: 30,
+                    height: 30,
+                    'assets/images/coin.png'
+                  ),
+                  const Text('+10 moedas', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Color(0xFFE6DDAF)))
+                ],
+              ).animate(target: _count == 10 ? 1 : 0)
                 .visibility()
                 .moveY(begin: -50, end: -400, duration: 1500.ms)
                 .fadeOut(delay: 200.ms),

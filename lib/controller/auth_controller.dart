@@ -43,6 +43,8 @@ class AuthController  extends ChangeNotifier {
   Future<void> resetPassword(String email) async => await _service.resetPassword(email);
 
   Future<UserCredential?> reauthenticateUser(String email, String password) async => _service.reauthenticateUser(email, password);
+  
+  Future<UserCredential?> reauthenticateWithCredential(AuthCredential credential) async => _service.reauthenticateWithCredential(credential);
 
   Future<void> updatePassword(String newPassword) async => _service.updatePassword(newPassword);
 

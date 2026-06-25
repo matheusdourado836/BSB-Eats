@@ -99,8 +99,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   void initState() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       selectedUser = await _userController.getUserById(widget.userId);
-      await getUserInfoCount();
-      _isFollowing = await _userController.checkIfIsFollowing(userId: widget.userId);
+      await Future.wait([
+        getUserInfoCount(),
+        _userController.checkIfIsFollowing(userId: widget.userId).then((isFollowing) => _isFollowing = isFollowing)
+      ]);
       setState(() {});
     });
     eventBus.on().listen((event) {

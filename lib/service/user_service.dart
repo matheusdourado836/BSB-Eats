@@ -5,6 +5,7 @@ import 'package:bsb_eats/service/social_media_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../shared/model/app_feedback.dart';
 import '../shared/model/enums.dart';
 import '../shared/model/favorite.dart';
@@ -84,6 +85,12 @@ class UserService {
     return total;
   }
 
+  Future<bool> checkForGlobalNotification(String notificationId) async {
+    final doc = await _database.collection('notifications').get();
+
+    return doc.docs.isNotEmpty;
+  }
+
   Stream<QuerySnapshot<Map<String, dynamic>>> getGlobalNotificationStream() {
     return _database.collection('notifications').snapshots();
   }
@@ -113,7 +120,7 @@ class UserService {
       }
     }
 
-    return notifications;
+    return notifications.where((n) => n.pendingDelete != true).toList();
   }
 
   Future<void> deleteAllNotifications() async {
@@ -124,6 +131,14 @@ class UserService {
       }
     }
     return;
+  }
+
+  Future<void> deleteNotification(String notificationId) async {
+    return await _database.collection('users').doc(_auth.currentUser?.uid).collection('notifications').doc(notificationId).delete();
+  }
+
+  Future<void> updateNotification(String? notificationId, Map<String, dynamic> data) async {
+    return await _database.collection('users').doc(_auth.currentUser?.uid).collection('notifications').doc(notificationId).update(data);
   }
 
   Future<List<Favorite>?> getFavorites() async {
@@ -257,6 +272,21 @@ class UserService {
     }).toList();
   }
 
+  Future<List<MyUser>> getLikes({required String? postId}) async {
+    List<MyUser> likes = [];
+    final docs = await _database.collection('posts').doc(postId).collection('likes').get();
+    for(final doc in docs.docs) {
+      if(doc.exists) {
+        final user = await _database.collection('users').doc(doc.id).get();
+        if(user.exists) {
+          likes.add(MyUser.fromJson(user.data()!));
+        }
+      }
+    }
+
+    return likes;
+  }
+
   Future<List<Post>> getLikedPosts({String? userId}) async {
     List<Post> likedPosts = [];
     final likesSnapshot = await _database.collection("users").doc(userId).collection('likes').get();
@@ -388,5 +418,22 @@ class UserService {
     return await _database.collection('users').doc(userId ?? _auth.currentUser?.uid).update(info);
   }
 
+  Future<void> sendUserStatusNotification({
+    required String? userId,
+    required String? type,
+    required bool? newValue,
+  }) async => await _messagingService.sendUserStatusNotification(userId: userId, type: type, newValue: newValue);
+
   Future<String?> getToken() async => _messagingService.getToken();
+
+  Future<bool?> getNotification(String? notificationId) async {
+    final doc = await _database.collection('users').doc(_auth.currentUser?.uid).collection('notifications').doc(notificationId).get();
+    return doc.exists;
+  }
+
+  Future<List<ActiveNotification>> getAllActiveNotifications() async => _messagingService.getAllActiveNotifications();
+
+  Future<void> cancelNotification(int id) async => _messagingService.cancelNotification(id);
+
+  Future<void> cancelAllNotifications() async => _messagingService.cancelAllNotifications();
 }
